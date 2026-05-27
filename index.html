@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Estudo de Caso - Spotify Global Trends</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero__glow"></div>
+
+    <div class="hero__content">
+      <p class="tag">Análise de Dados • Python • Spotify</p>
+      <h1>Estudo de Caso do Arquivo <span>“Spotify Global Trends”</span></h1>
+      <p class="subtitle">
+        Visualização dos padrões de streams, gêneros, tendências e longevidade musical a partir de dados globais do Spotify.
+      </p>
+    </div>
+  </header>
+
+  <main>
+    <section class="intro section-card">
+      <h2>Objetivo do estudo</h2>
+      <p>
+        Este projeto analisa o comportamento das músicas no dataset, observando quais gêneros concentram mais streams,
+        quais aparecem em tendência de crescimento, como a longevidade das faixas se distribui e como países diferentes
+        se relacionam com gêneros e permanência.
+      </p>
+
+      <div class="metrics">
+        <article>
+          <strong>7</strong>
+          <span>gráficos gerados</span>
+        </article>
+
+        <article>
+          <strong>Python Libs:</strong>
+          <span>Pandas, Matplotlib e Seaborn</span>
+        </article>
+
+        <article>
+          <strong>GitHub Pages</strong>
+          <span>apresentação em HTML/CSS</span>
+        </article>
+      </div>
+    </section>
+
+    <section class="code-section">
+      <div class="section-heading">
+        <p class="tag">Código utilizado</p>
+        <h2>Script completo da análise</h2>
+        <p>
+          Clique no botão abaixo para expandir ou recolher o código usado na geração dos gráficos.
+        </p>
+      </div>
+
+      <div class="code-actions">
+        <button class="code-toggle" type="button" id="codeToggle" aria-expanded="false" aria-controls="codeShell">
+          Expandir código
+        </button>
+      </div>
+
+      <div class="code-shell" id="codeShell">
+        <div class="window-bar">
+          <span></span>
+          <span></span>
+          <span></span>
+          <p>analise_spotify.py</p>
+        </div>
+
+        <pre><code>from pathlib import Path
+
+import pandas as pd
+import matplotlib
+matplotlib.use(&quot;Agg&quot;)  # salva os gráficos sem precisar abrir janela
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+
+# =========================================================
+# CONFIGURAÇÕES
+# =========================================================
+
+CSV_PATH = &quot;dados.csv&quot;
+# Exemplos:
+# CSV_PATH = &quot;PyDatalab/spotify_global_trends.csv&quot;
+# CSV_PATH = r&quot;C:\Users\Home\Desktop\workspace\csv\spot.csv&quot;
+
+OUTPUT_DIR = Path(&quot;graficos&quot;)
+OUTPUT_DIR.mkdir(exist_ok=True)
+
+sns.set_theme(style=&quot;whitegrid&quot;)
+
+
+# =========================================================
+# LEITURA DOS DADOS
+# =========================================================
+
+dados = pd.read_csv(CSV_PATH)
+
+print(&quot;Colunas encontradas:&quot;)
+print(dados.columns)
+
+# Converte streams para número, caso venha como texto
+dados[&quot;streams&quot;] = pd.to_numeric(
+    dados[&quot;streams&quot;].astype(str).str.replace(&quot;,&quot;, &quot;&quot;, regex=False),
+    errors=&quot;coerce&quot;
+).fillna(0)
+
+
+# =========================================================
+# FILTROS PADRÕES
+# =========================================================
+
+genero_out = [
+    &quot;Billboard Hot 100&quot;,
+    &quot;Offizielle Charts&quot;,
+    &quot;Dolby Atmos&quot;,
+    &quot;Special Purpose Artist&quot;,
+    &quot;Toronto&quot;,
+    &quot;Girl Group&quot;,
+    &quot;Falcom&quot;
+]
+
+my_genre = [
+    &quot;Alternative Rock&quot;,
+    &quot;Alternative Pop&quot;,
+    &quot;Indie Pop&quot;,
+    &quot;Rock&quot;,
+    &quot;Pop&quot;,
+    &quot;Hip Hop&quot;
+]
+
+my_countries = [
+    &quot;US&quot;,
+    &quot;PR&quot;,
+    &quot;SE&quot;,
+    &quot;GB&quot;,
+    &quot;England&quot;,
+    &quot;CA&quot;,
+    &quot;AU&quot;,
+    &quot;KR&quot;,
+    &quot;CO&quot;,
+    &quot;IE&quot;,
+    &quot;NO&quot;
+]
+
+
+# =========================================================
+# FUNÇÃO PARA SALVAR GRÁFICOS
+# =========================================================
+
+def salvar_grafico(nome_arquivo):
+    plt.tight_layout()
+    plt.savefig(OUTPUT_DIR / nome_arquivo, dpi=300, bbox_inches=&quot;tight&quot;)
+    plt.close()
+
+
+# =========================================================
+# 1) FLUXO X EVERGREEN POR PAÍS
+# =========================================================
+
+table_alta = dados.groupby([&quot;country&quot;, &quot;longevity&quot;]).size().unstack(fill_value=0)
+
+if &quot;Evergreen&quot; not in table_alta.columns:
+    table_alta[&quot;Evergreen&quot;] = 0
+
+table_alta[&quot;fluxo&quot;] = table_alta.sum(axis=1)
+table_alta[&quot;evergreen_ratio&quot;] = table_alta[&quot;Evergreen&quot;] / table_alta[&quot;fluxo&quot;]
+table_alta[&quot;evergreen_pct&quot;] = (table_alta[&quot;evergreen_ratio&quot;] * 100).round(2)
+
+plot_df = table_alta[table_alta[&quot;fluxo&quot;] &gt; 5].copy()
+
+plt.figure(figsize=(10, 6))
+
+sns.scatterplot(
+    data=plot_df,
+    x=&quot;fluxo&quot;,
+    y=&quot;evergreen_pct&quot;
+)
+
+for country in plot_df.index:
+    plt.text(
+        plot_df.loc[country, &quot;fluxo&quot;] + 0.3,
+        plot_df.loc[country, &quot;evergreen_pct&quot;] + 0.3,
+        country
+    )
+
+plt.xlabel(&quot;Fluxo de músicas&quot;)
+plt.ylabel(&quot;Músicas Evergreen (%)&quot;)
+plt.title(&quot;Fluxo x Permanência por País&quot;)
+salvar_grafico(&quot;01_fluxo_x_evergreen.png&quot;)
+
+
+# =========================================================
+# 2) TOP 10 GÊNEROS POR STREAM
+# =========================================================
+
+genero_stream = dados.groupby(&quot;genre&quot;)[&quot;streams&quot;].sum()
+genero_stream = genero_stream[~genero_stream.index.isin(genero_out)]
+genero_stream = genero_stream.sort_values(ascending=False)
+
+top10 = genero_stream.head(10)
+top10_milhoes = top10 / 1_000_000
+
+print(&quot;\nTOP 10 GÊNEROS POR STREAM:&quot;)
+print(top10)
+
+plt.figure(figsize=(10, 6))
+top10_milhoes.plot(kind=&quot;bar&quot;)
+
+plt.ylabel(&quot;Streams (milhões)&quot;)
+plt.xlabel(&quot;Gêneros&quot;)
+plt.title(&quot;TOP 10 GÊNEROS POR STREAM&quot;)
+plt.xticks(rotation=45, ha=&quot;right&quot;)
+
+salvar_grafico(&quot;02_top10_generos_stream.png&quot;)
+
+
+# =========================================================
+# 3) GÊNEROS EM ALTA
+# =========================================================
+
+rising = dados[dados[&quot;trend&quot;] == &quot;Rising&quot;]
+rising = rising[~rising[&quot;genre&quot;].isin(genero_out)]
+
+rising_genero = rising.groupby(&quot;genre&quot;)[&quot;trend&quot;].count()
+rising_genero = rising_genero.sort_values(ascending=False)
+
+print(&quot;\nGÊNEROS EM ALTA:&quot;)
+print(rising_genero)
+
+plt.figure(figsize=(10, 6))
+rising_genero.plot(kind=&quot;bar&quot;)
+
+plt.title(&quot;GÊNEROS EM ALTA&quot;)
+plt.ylabel(&quot;NÚMERO DE MÚSICAS&quot;)
+plt.xlabel(&quot;GÊNEROS&quot;)
+plt.xticks(rotation=45, ha=&quot;right&quot;)
+
+salvar_grafico(&quot;03_generos_em_alta.png&quot;)
+
+
+# =========================================================
+# 4) GRÁFICO DE PIZZA: LONGEVIDADE DAS MÚSICAS
+# =========================================================
+
+longevidade = dados[&quot;longevity&quot;].value_counts()
+
+plt.figure(figsize=(8, 8))
+plt.pie(
+    longevidade,
+    labels=longevidade.index,
+    autopct=&quot;%1.1f%%&quot;,
+    startangle=90
+)
+
+plt.title(&quot;LONGEVIDADE DAS MÚSICAS&quot;)
+
+salvar_grafico(&quot;04_pizza_longevidade.png&quot;)
+
+
+# =========================================================
+# 5) QUANTIDADE DE MÚSICAS POR GÊNERO E PAÍS
+# =========================================================
+
+df_filtered = dados[
+    dados[&quot;genre&quot;].isin(my_genre)
+    &amp; dados[&quot;country&quot;].isin(my_countries)
+]
+
+plt.figure(figsize=(14, 8))
+
+sns.countplot(
+    data=df_filtered,
+    x=&quot;genre&quot;,
+    hue=&quot;country&quot;,
+    palette=&quot;Spectral&quot;
+)
+
+start = [1, 2, 3, 4]
+fim = list(range(5, 40, 5))
+temp = start + fim
+
+plt.yticks(temp)
+plt.title(
+    &quot;Quantidade de Músicas por Gênero e País&quot;,
+    fontsize=24,
+    fontweight=&quot;bold&quot;,
+    pad=30
+)
+plt.xlabel(&quot;Gênero&quot;, fontsize=16, fontweight=&quot;bold&quot;)
+plt.ylabel(&quot;Quantidade&quot;, fontsize=16, fontweight=&quot;bold&quot;)
+plt.xticks(rotation=45, ha=&quot;right&quot;)
+
+salvar_grafico(&quot;05_quantidade_genero_pais.png&quot;)
+
+
+# =========================================================
+# 6) QUANTIDADE DE MÚSICAS POR GÊNERO
+# =========================================================
+
+df_generos = dados[dados[&quot;genre&quot;].isin(my_genre)]
+
+quantidade = df_generos[&quot;genre&quot;].value_counts().reset_index()
+quantidade.columns = [&quot;genre&quot;, &quot;quantidade&quot;]
+
+plt.figure(figsize=(10, 6))
+
+sns.barplot(
+    data=quantidade,
+    x=&quot;genre&quot;,
+    y=&quot;quantidade&quot;
+)
+
+plt.title(&quot;Quantidade de Músicas por Gênero&quot;, fontsize=14, fontweight=&quot;bold&quot;)
+plt.xlabel(&quot;Gênero&quot;)
+plt.ylabel(&quot;Quantidade&quot;)
+plt.xticks(rotation=45, ha=&quot;right&quot;)
+
+salvar_grafico(&quot;06_quantidade_musicas_genero.png&quot;)
+
+
+# =========================================================
+# 7) MÉDIA DE STREAMS POR GÊNERO
+# =========================================================
+
+popularidade = (
+    df_generos.groupby(&quot;genre&quot;)[&quot;streams&quot;]
+    .mean()
+    .reset_index()
+    .sort_values(&quot;streams&quot;, ascending=False)
+)
+
+popularidade[&quot;streams_milhoes&quot;] = popularidade[&quot;streams&quot;] / 1_000_000
+
+plt.figure(figsize=(10, 6))
+
+sns.barplot(
+    data=popularidade,
+    x=&quot;genre&quot;,
+    y=&quot;streams_milhoes&quot;
+)
+
+plt.title(&quot;Média de Streams por Gênero&quot;, fontsize=14, fontweight=&quot;bold&quot;)
+plt.xlabel(&quot;Gênero&quot;)
+plt.ylabel(&quot;Streams médios (milhões)&quot;)
+plt.xticks(rotation=45, ha=&quot;right&quot;)
+
+salvar_grafico(&quot;07_media_streams_genero.png&quot;)
+
+
+# =========================================================
+# FINAL
+# =========================================================
+
+print(&quot;\nGráficos gerados com sucesso!&quot;)
+print(f&quot;Pasta de saída: {OUTPUT_DIR.resolve()}&quot;)</code></pre>
+      </div>
+    </section>
+
+    <section class="gallery-section">
+      <div class="section-heading">
+        <p class="tag">Resultados visuais</p>
+        <h2>Gráficos gerados</h2>
+        <p>
+          Clique em qualquer gráfico para ampliar em um modal ocupando a maior parte da tela.
+        </p>
+      </div>
+
+      <div class="gallery-grid">
+        <article class="chart-card">
+          <button class="chart-open" type="button" data-title="01_fluxo_x_evergreen" data-image="graficos/01_fluxo_x_evergreen.png">
+            <img src="graficos/01_fluxo_x_evergreen.png" alt="Gráfico de fluxo x evergreen por país" />
+          </button>
+          <h3>01_fluxo_x_evergreen</h3>
+        </article>
+
+        <article class="chart-card">
+          <button class="chart-open" type="button" data-title="02_top10_generos_stream" data-image="graficos/02_top10_generos_stream.png">
+            <img src="graficos/02_top10_generos_stream.png" alt="Gráfico top 10 gêneros por stream" />
+          </button>
+          <h3>02_top10_generos_stream</h3>
+        </article>
+
+        <article class="chart-card">
+          <button class="chart-open" type="button" data-title="03_generos_em_alta" data-image="graficos/03_generos_em_alta.png">
+            <img src="graficos/03_generos_em_alta.png" alt="Gráfico gêneros em alta" />
+          </button>
+          <h3>03_generos_em_alta</h3>
+        </article>
+
+        <article class="chart-card">
+          <button class="chart-open" type="button" data-title="04_pizza_longevidade" data-image="graficos/04_pizza_longevidade.png">
+            <img src="graficos/04_pizza_longevidade.png" alt="Gráfico de pizza da longevidade das músicas" />
+          </button>
+          <h3>04_pizza_longevidade</h3>
+        </article>
+
+        <article class="chart-card">
+          <button class="chart-open" type="button" data-title="05_quantidade_genero_pais" data-image="graficos/05_quantidade_genero_pais.png">
+            <img src="graficos/05_quantidade_genero_pais.png" alt="Gráfico quantidade de músicas por gênero e país" />
+          </button>
+          <h3>05_quantidade_genero_pais</h3>
+        </article>
+
+        <article class="chart-card">
+          <button class="chart-open" type="button" data-title="06_quantidade_musicas_genero" data-image="graficos/06_quantidade_musicas_genero.png">
+            <img src="graficos/06_quantidade_musicas_genero.png" alt="Gráfico quantidade de músicas por gênero" />
+          </button>
+          <h3>06_quantidade_musicas_genero</h3>
+        </article>
+
+        <article class="chart-card chart-card--center">
+          <button class="chart-open" type="button" data-title="07_media_streams_genero" data-image="graficos/07_media_streams_genero.png">
+            <img src="graficos/07_media_streams_genero.png" alt="Gráfico média de streams por gênero" />
+          </button>
+          <h3>07_media_streams_genero</h3>
+        </article>
+      </div>
+    </section>
+
+    <section class="members section-card">
+      <h2>Informações dos integrantes</h2>
+
+      <div class="members-grid">
+        <article>
+          <span>Integrante 1</span>
+          <strong>Lucca Silva</strong>
+        </article>
+
+        <article>
+          <span>Integrante 2</span>
+          <strong>(Elly)Alice Louise Debortoli dos Santos</strong>
+        </article>
+
+        <article>
+          <span>Integrante 3</span>
+          <strong>Rafael Rodrigues Paiva</strong>
+        </article>
+
+        <article>
+          <span>Integrante 4</span>
+          <strong>Daniel Henrique Santos da Silva</strong>
+        </article>
+
+        <article>
+          <span>Turma</span>
+          <strong>3º Periodo de ADS 2026.</strong>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <div class="image-modal" id="imageModal" aria-hidden="true">
+    <div class="modal-backdrop" data-close-modal></div>
+
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <h2 id="modalTitle">Gráfico</h2>
+        <button class="modal-close" type="button" aria-label="Fechar modal" data-close-modal>
+          ×
+        </button>
+      </div>
+
+      <div class="modal-image-wrap">
+        <img id="modalImage" src="" alt="" />
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Estudo de caso desenvolvido para apresentação acadêmica.</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
